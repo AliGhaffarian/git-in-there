@@ -38,6 +38,7 @@ logger.addHandler(stdout_handler)
 
 
 REPO="https://github.com/AliGhaffarian/mylinux"
+REPO_NAME="mylinux"
 SIZE_THRESHHOLD=1 *  1024 * 1024 * 70
 GITHUB_SIZE_LIMIT= 1 * 1024 * 1024 * 100
 FILE_NAME=datetime.datetime.fromtimestamp(time.time()).strftime("%d_%m_%Y:%H:%M")
@@ -90,13 +91,11 @@ def size_of_path(path : pathlib.Path):
 
 def backup_init():
     os.chdir(os.environ['HOME'])
-    subprocess.run(["git", "init"])
-    subprocess.run(["git", "remote", "add", "origin", REPO])
+    subprocess.run(["git", "clone", "--no-checkout", REPO])
+    subprocess.run(["mv", f"{REPO_NAME}/.git", "."])
+    subprocess.run(["rmdir", REPO_NAME])
 
-    subprocess.run(["git", "fetch", "--filter=blob:none", "--depth", "1", "origin"])
     subprocess.run(["git", "add", f"{OLD_PWD}/.gitattributes"])
-    subprocess.run(["git", "branch", f"main"])
-    subprocess.run(["git", "switch", f"main"])
 
 
 def push_backup(path : pathlib.Path):
@@ -120,7 +119,7 @@ def push_backup(path : pathlib.Path):
             logger.warning(f"failed to push, attemp {push_attempts} of {MAX_PUSH_ATTEMPTS}")
         push_attempts += 1
         
-        p_report=subprocess.run(["git", "push", "-f", "--set-upstream", "origin", "main"])
+        p_report=subprocess.run(["git", "push", "-f", "-u", "origin", "main"])
         if p_report.returncode == 0:
             push_success=True
         push_attempts += 1 
@@ -154,7 +153,7 @@ def push_backup_list(paths : list[pathlib.Path]):
             logger.warning(f"failed to push, attemp {push_attempts} of {MAX_PUSH_ATTEMPTS}")
         push_attempts += 1
         
-        p_report=subprocess.run(["git", "push", "-f", "--set-upstream", "origin", "main"])
+        p_report=subprocess.run(["git", "push", "-f", "-u", "origin", "main"])
         if p_report.returncode == 0:
             push_success=True
         push_attempts += 1 
