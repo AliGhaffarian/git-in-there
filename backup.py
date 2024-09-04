@@ -39,6 +39,7 @@ logger.addHandler(stdout_handler)
 
 REPO="https://github.com/AliGhaffarian/mylinux"
 SIZE_THRESHHOLD=1 *  1024 * 1024 * 70
+GITHUB_SIZE_LIMIT= 1 * 1024 * 1024 * 100
 FILE_NAME=datetime.datetime.fromtimestamp(time.time()).strftime("%d_%m_%Y:%H:%M")
 OLD_PWD : pathlib.Path =pathlib.Path().resolve()
 MAX_PUSH_ATTEMPTS=5
@@ -91,6 +92,8 @@ def backup_init():
     os.chdir(os.environ['HOME'])
     subprocess.run(["git", "init"])
     subprocess.run(["git", "remote", "add", "origin", REPO])
+
+    subprocess.run(["git", "fetch", "--filter=blob:none", "--depth", "1", "origin"])
     subprocess.run(["git", "add", f"{OLD_PWD}/.gitattributes"])
     subprocess.run(["git", "branch", f"main"])
     subprocess.run(["git", "switch", f"main"])
@@ -99,6 +102,10 @@ def backup_init():
 def push_backup(path : pathlib.Path):
 
     size=convert_size(size_of_path(path))
+
+    if size_of_path(path) > GITHUB_SIZE_LIMIT:
+        logger.critical(f"{path} is bigger than githubs upload limit")
+        return 
     logger.info(f"pushing '{path}', size: {size}")
     subprocess.run(["git", "add", str(path)])
     subprocess.run(["git", "commit", "-m", FILE_NAME],\
@@ -129,6 +136,10 @@ def push_backup_list(paths : list[pathlib.Path]):
     logger.info(f"pushing group {paths}, {convert_size(size)}")
 
     for path in paths:
+        if size_of_path(path) > GITHUB_SIZE_LIMIT:
+            logger.critical(f"{path} is bigger than githubs upload limit, skipping")
+            continue
+ 
         subprocess.run(["git", "add", str(path)])
     subprocess.run(["git", "commit", "-m", FILE_NAME],\
             stdout=subprocess.DEVNULL,\
