@@ -7,9 +7,18 @@ import os
 import logging
 import colorlog
 import concurrent.futures
+import signal
 """
 default configs for the loggers in the rafece2
 """
+
+
+#configs
+REPO="https://github.com/AliGhaffarian/mylinux"
+SIZE_THRESHHOLD= 70 #MB
+
+
+SIZE_THRESHHOLD = SIZE_THRESHHOLD * 1024 * 1024
 
 # Define the format and log colors
 log_format = '%(asctime)s [%(levelname)s] %(name)s [%(funcName)s]: %(message)s'
@@ -37,9 +46,7 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(stdout_handler)
 
 
-REPO="https://github.com/AliGhaffarian/mylinux"
-REPO_NAME="mylinux"
-SIZE_THRESHHOLD=1 *  1024 * 1024 * 70
+REPO_NAME=REPO.split('/')[-1]
 GITHUB_SIZE_LIMIT= 1 * 1024 * 1024 * 100
 FILE_NAME=datetime.datetime.fromtimestamp(time.time()).strftime("%d_%m_%Y:%H:%M")
 OLD_PWD : pathlib.Path =pathlib.Path().resolve()
@@ -95,7 +102,8 @@ def backup_init():
     subprocess.run(["mv", f"{REPO_NAME}/.git", "."])
     subprocess.run(["rmdir", REPO_NAME])
 
-    subprocess.run(["git", "add", f"{OLD_PWD}/.gitattributes"])
+    subprocess.run(["mv", f"{OLD_PWD}/.gitattributes", "."])
+    subprocess.run(["git", "add", ".gitattributes"])
 
 
 def push_backup(path : pathlib.Path):
@@ -163,10 +171,9 @@ def push_backup_list(paths : list[pathlib.Path]):
         
 
 
-
-
 def backup_wrapup():
     subprocess.run(["rm", "-rf", ".git"])
+    subprocess.run(["rm", "-f", ".gitattributes"])
     os.chdir(OLD_PWD)
 
 def optimized_backup_push(dirs : list[pathlib.Path])->int:
@@ -207,8 +214,14 @@ def backup_dir(path: pathlib.Path):
 
     push_backup(path)
 
+def sig_int_handler(signal, frame):
+    os.chdir(os.environ['HOME'])
+    backup_wrapup()
+
 if __name__ == "__main__":
-    targets_files = []
+    signal.signal(signal.SIGINT, sig_int_handler)
+
+    targets_files : list[pathlib.Path] = []
 
     e = concurrent.futures.ThreadPoolExecutor(max_workers=3)
     target_files_list=open("targets.txt", "r")\
