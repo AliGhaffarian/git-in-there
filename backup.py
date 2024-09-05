@@ -7,14 +7,15 @@ import os
 import logging
 import colorlog
 import signal
-
+import shutil
 
 #configs
 REPO="https://github.com/AliGhaffarian/mylinux"
-SIZE_THRESHHOLD= 70 #MB
+TARGETS_FILE="targets.txt"
+MAX_UPLOAD_SIZE_CONF= 30 #MB
 
 
-SIZE_THRESHHOLD = SIZE_THRESHHOLD * 1024 * 1024
+MAX_UPLOAD_SIZE = MAX_UPLOAD_SIZE_CONF * 1024 * 1024
 
 # Define the format and log colors
 log_format = '%(asctime)s [%(levelname)s] %(name)s [%(funcName)s]: %(message)s'
@@ -92,14 +93,40 @@ def size_of_path(path : pathlib.Path):
     path_size_cache.update({path : res})
     return res 
 
+
 def backup_init():
     os.chdir(os.environ['HOME'])
-    subprocess.run(["git", "clone", "--no-checkout", REPO])
-    subprocess.run(["mv", f"{REPO_NAME}/.git", "."])
-    subprocess.run(["rmdir", REPO_NAME])
+    p = subprocess.run(["git", "clone", "--no-checkout", REPO])
+    if p.returncode != 0:
+        logger.critical(f"failed to {p.args}, err code : {p.returncode}")
+        exit(p.returncode)
 
-    subprocess.run(["mv", f"{OLD_PWD}/.gitattributes", "."])
-    subprocess.run(["git", "add", ".gitattributes"])
+    path_file_git=pathlib.Path(f"{REPO_NAME}/.git").resolve()
+    cwd = pathlib.Path(".").resolve()
+
+    try:
+        shutil.move(path_file_git, cwd)
+    except shutil.Error as e:
+        if "already exists" in e.args[0]:
+            pass
+
+    shutil.rmtree(pathlib.Path(REPO_NAME).resolve())
+
+    path_file_gitattr = pathlib.Path(f"{OLD_PWD}/.gitattributes").resolve()
+
+    try:
+        shutil.move(path_file_gitattr, cwd)
+    except shutil.Error as e:
+        print(e.args)
+        if "already exists" in e.args[0]:
+            pass
+    except FileNotFoundError:
+        pass
+
+    try:
+        subprocess.run(["git", "add", ".gitattributes"])
+    except Exception:
+        pass
 
 
 def push_backup(path : pathlib.Path):
@@ -168,6 +195,9 @@ def push_backup_list(paths : list[pathlib.Path]):
 
 
 def backup_wrapup():
+    if os.getcwd() != os.environ['HOME']:
+        logger.critical("expected cwd to be {os.environ['HOME'] instead of {os.getcwd()}}")
+        return
     subprocess.run(["rm", "-rf", ".git"])
     subprocess.run(["rm", "-f", ".gitattributes"])
     os.chdir(OLD_PWD)
@@ -176,7 +206,7 @@ def optimized_backup_push(dirs : list[pathlib.Path])->int:
     push_list = [dirs[0]]
     current_push_list_size = size_of_path(dirs[0])
     for direc in dirs[1:]:
-        if size_of_path(direc) + current_push_list_size < SIZE_THRESHHOLD:
+        if size_of_path(direc) + current_push_list_size < MAX_UPLOAD_SIZE:
             push_list.append(direc)
             current_push_list_size += size_of_path(direc)
     push_backup_list(push_list)
@@ -190,7 +220,7 @@ def backup_dir(path: pathlib.Path):
         push_backup(path)
         return
 
-    if size_of_path(path) > SIZE_THRESHHOLD:
+    if size_of_path(path) > MAX_UPLOAD_SIZE:
         children = list(path.glob("*"))
 
         if len(children) == 0:
@@ -199,7 +229,7 @@ def backup_dir(path: pathlib.Path):
         
         children.sort(key=size_of_path)
         number_of_pushed_childs=0
-        if size_of_path(children[0]) < SIZE_THRESHHOLD:
+        if size_of_path(children[0]) < MAX_UPLOAD_SIZE:
             number_of_pushed_childs=optimized_backup_push(children)
         
         assert number_of_pushed_childs >= 0 and number_of_pushed_childs <= len(children)
@@ -214,13 +244,14 @@ def sig_int_handler(signal, frame):
     os.chdir(os.environ['HOME'])
     backup_wrapup()
 
+
+
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, sig_int_handler)
 
     targets_files : list[pathlib.Path] = []
 
-    e = concurrent.futures.ThreadPoolExecutor(max_workers=3)
-    target_files_list=open("targets.txt", "r")\
+    target_files_list=open(TARGETS_FILE, "r")\
             .read()\
             .strip()\
             .replace("~", os.environ['HOME'])\
