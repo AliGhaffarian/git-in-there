@@ -6,11 +6,7 @@ import datetime
 import os
 import logging
 import colorlog
-import concurrent.futures
 import signal
-"""
-default configs for the loggers in the rafece2
-"""
 
 
 #configs
