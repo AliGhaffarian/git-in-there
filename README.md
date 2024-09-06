@@ -16,6 +16,8 @@ git-in-there reads the TARGETS_FILE file to see what files are tracked and to wh
 the configurations must be provided in [yaml](https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html)  
 the default name is targets.yaml 
 
+## limitations
+currently special path symbols like ~ are not supported  
 
 ## config fields
 
