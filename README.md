@@ -8,7 +8,7 @@ an script to automate backing up files with git
 
 - create a github repository for the backups
 - do at least one push to the repository (otherwise the script may not perform as intended)
-- add a configuration file
+- add a [configuration](https://github.com/AliGhaffarian/git-in-there?tab=readme-ov-file#configuration) file
 - run the script
   ```
   python3 git-in-there.py
