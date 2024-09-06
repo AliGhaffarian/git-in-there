@@ -9,7 +9,10 @@ an script to automate backing up files with git
 - create a github repository for the backups
 - do at least one push to the repository (otherwise the script may not perform as intended)
 - add a configuration file
-- run the script 
+- run the script
+  ```
+  python3 git-in-there.py
+  ```
 
 # configuration
 git-in-there reads the TARGETS_FILE file to see what files are tracked and to which repository it needs to push them  
