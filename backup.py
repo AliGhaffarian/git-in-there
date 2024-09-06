@@ -5,13 +5,14 @@ import time
 import datetime
 import os
 import logging
+from typing import Required
 import colorlog
 import signal
 import shutil
-
+import yaml
+import tempfile
 #configs
-REPO="https://github.com/AliGhaffarian/mylinux"
-TARGETS_FILE="targets.txt"
+TARGETS_FILE="targets.yaml"
 MAX_UPLOAD_SIZE_CONF= 30 #MB
 
 
@@ -43,13 +44,45 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(stdout_handler)
 
 
-REPO_NAME=REPO.split('/')[-1]
 GITHUB_SIZE_LIMIT= 1 * 1024 * 1024 * 100
 FILE_NAME=datetime.datetime.fromtimestamp(time.time()).strftime("%d_%m_%Y:%H:%M")
 OLD_PWD : pathlib.Path =pathlib.Path().resolve()
 MAX_PUSH_ATTEMPTS=5
 
 path_size_cache : dict = {}
+
+#yaml config paring variables
+CONF_REQ_FIELDS=["root", "repo"]
+CONF_REQ_EITHER = [("targets", "no-target")] #every config must have either of each entry
+
+
+CURRENT_ROOT="" #used by sig_int_handler()
+
+def check_fields_log_n_exit_if_invalid(conf : dict):
+
+    present_req_fields_in_conf = list (set(CONF_REQ_FIELDS) & set(conf.keys()))
+    if sorted(CONF_REQ_FIELDS) != sorted(present_req_fields_in_conf):
+        missing_fields = [field for field in CONF_REQ_FIELDS if field not in conf.keys()]
+        raise Exception(1, f"missing required fields ({missing_fields}) in {conf}")
+
+    for tuple_either_conf in CONF_REQ_EITHER:
+        either_conf_found=False
+        for either_conf in tuple_either_conf:
+            if either_conf in conf.keys():
+                either_conf_found = True
+                break
+        if not either_conf_found:
+            raise Exception(2,f"either of these fields need to be provided ({tuple_either_conf}) in {conf}") 
+
+def parse_config():
+    read_buff = open(TARGETS_FILE).read()
+    parsed_yaml_conf = yaml.safe_load(read_buff)
+    for conf in parsed_yaml_conf:
+        check_fields_log_n_exit_if_invalid(conf)
+
+    return parsed_yaml_conf
+        
+
 
 def convert_size(size_bytes):
     #https://stackoverflow.com/questions/5194057/better-way-to-convert-file-sizes-in-python
@@ -94,14 +127,21 @@ def size_of_path(path : pathlib.Path):
     return res 
 
 
-def backup_init():
-    os.chdir(os.environ['HOME'])
-    p = subprocess.run(["git", "clone", "--no-checkout", REPO])
-    if p.returncode != 0:
-        logger.critical(f"failed to {p.args}, err code : {p.returncode}")
-        exit(p.returncode)
+def backup_init(repo):
 
-    path_file_git=pathlib.Path(f"{REPO_NAME}/.git").resolve()
+    repo_name : str=repo.split("/")[-1]
+    temp_dir = tempfile.TemporaryDirectory()
+    did_backup_repo_name=False
+    if os.path.exists(repo_name):
+        did_backup_repo_name=True
+        logger.debug(f"backing up {repo_name}")
+        shutil.move(repo_name, temp_dir.name)
+
+    p = subprocess.run(["git", "clone", "--no-checkout", "--depth", "1", repo])
+    if p.returncode != 0:
+        raise Exception(f"failed to {p.args}, err code : {p.returncode}")
+
+    path_file_git=pathlib.Path(f"{repo_name}/.git").resolve()
     cwd = pathlib.Path(".").resolve()
 
     try:
@@ -110,7 +150,9 @@ def backup_init():
         if "already exists" in e.args[0]:
             pass
 
-    shutil.rmtree(pathlib.Path(REPO_NAME).resolve())
+    shutil.rmtree(repo_name)
+    if did_backup_repo_name:
+        shutil.move(f"{temp_dir.name}/{repo_name}",cwd)
 
     path_file_gitattr = pathlib.Path(f"{OLD_PWD}/.gitattributes").resolve()
 
@@ -195,12 +237,8 @@ def push_backup_list(paths : list[pathlib.Path]):
 
 
 def backup_wrapup():
-    if os.getcwd() != os.environ['HOME']:
-        logger.critical("expected cwd to be {os.environ['HOME'] instead of {os.getcwd()}}")
-        return
     subprocess.run(["rm", "-rf", ".git"])
     subprocess.run(["rm", "-f", ".gitattributes"])
-    os.chdir(OLD_PWD)
 
 def optimized_backup_push(dirs : list[pathlib.Path])->int:
     push_list = [dirs[0]]
@@ -241,7 +279,7 @@ def backup_dir(path: pathlib.Path):
     push_backup(path)
 
 def sig_int_handler(signal, frame):
-    os.chdir(os.environ['HOME'])
+    os.chdir(CURRENT_ROOT)
     backup_wrapup()
 
 
@@ -249,22 +287,26 @@ def sig_int_handler(signal, frame):
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, sig_int_handler)
 
-    targets_files : list[pathlib.Path] = []
+    backup_confs = parse_config()
+    logger.debug(f"loaded configs: {backup_confs}")
+    for conf in backup_confs:
+        CURRENT_ROOT= pathlib.Path(conf['root']).resolve()
 
-    target_files_list=open(TARGETS_FILE, "r")\
-            .read()\
-            .strip()\
-            .replace("~", os.environ['HOME'])\
-            .split("\n")
 
-    target_files_list = [*map(lambda x: x.strip(), target_files_list)]
+        OLD_PWD=pathlib.Path().resolve()
+        os.chdir(CURRENT_ROOT)
+        backup_init(conf['repo'])
 
-    backup_init()
-    for path in target_files_list:
-        targets_files.append(pathlib.Path(path).resolve())
+        if 'no-target' in conf.keys():
+            backup_dir(pathlib.Path(".").resolve())
+            continue
 
-    for target in targets_files:
-        backup_dir(pathlib.Path(target))
+        for target in conf['targets']:
+            backup_dir(pathlib.Path(target).resolve())
+        
+        assert pathlib.Path().resolve() == CURRENT_ROOT, f"expected cwd to be {CURRENT_ROOT} not pathlib.Path().resolve()"
+        backup_wrapup()
+        os.chdir(OLD_PWD)
 
-    backup_wrapup()
+
 
