@@ -1,0 +1,22 @@
+-
+    repo: "https://github.com/AliGhaffarian/vim_conf"
+    targets:
+      - ".vim"
+      - ".vimrc"
+      - ".viminfo"
+      - ".config/coc"
+    root: "/home/user"
+- 
+    repo: "https://github.com/AliGhaffarian/mylinux"
+    targets:
+      - "Documents/people"
+      - "Documents/archive"
+      - "Documents/vim_cheat_sheet.png"
+      - "Documents/startup"
+    root: "/home/user"
+-
+    repo: "https://github.com/AliGhaffarian/books"
+    root: "Documents/books"
+    no-target: true
+
+
