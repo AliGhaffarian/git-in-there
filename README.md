@@ -35,8 +35,8 @@ either targets or no_target field must be provided
 todo:check for the target being inside root by checking if it's path starts with root
 if is not provided the user will be warned and prompted to back up the entire root directory, the prompt can be suppresed with no_target
 ### root
-an absolute path in which targets reside
-
+an absolute path in which targets reside  
+**must be absolute path**
 ### repo
 the repo to which the files will be pushed
 
@@ -60,7 +60,7 @@ the repo to which the files will be pushed
     root: "/home/user"
 -
     repo: "https://github.com/AliGhaffarian/books"
-    root: "Documents/books"
+    root: "/home/user/Documents/books"
     no-target: true
 ```
 
