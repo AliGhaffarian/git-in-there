@@ -12,8 +12,8 @@ an script to automate backing up files with git
 - run the script 
 
 # configuration
-git-in-there reads the TARGETS_FILE file to see what files are tracked and to which repository it needs to push them
-the configurations must be provided in [yaml](https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html)
+git-in-there reads the TARGETS_FILE file to see what files are tracked and to which repository it needs to push them  
+the configurations must be provided in [yaml](https://docs.ansible.com/ansible/latest/reference_appendices/YAMLSyntax.html)  
 the default name is targets.yaml 
 
 
@@ -33,7 +33,7 @@ if is not provided the user will be warned and prompted to back up the entire ro
 an absolute path in which targets reside
 
 ### repo
-the repo to which the files will be pushed into
+the repo to which the files will be pushed
 
 ### config example:
 ```yaml
