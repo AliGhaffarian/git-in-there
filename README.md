@@ -12,6 +12,7 @@ an script to automate backing up files with git
 - run the script
   ```
   python3 git-in-there.py
+  pip install -r requirements.txt
   ```
 
 # configuration
