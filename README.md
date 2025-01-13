@@ -65,3 +65,7 @@ the repo to which the files will be pushed
     no-target: true
 ```
 
+# TODO
+- Option to backup certain repos
+- A `.ignore` file that tells the script to ignore the directory
+- Optimize grouping files for upload
