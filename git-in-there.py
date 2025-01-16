@@ -11,6 +11,7 @@ import signal
 import shutil
 import yaml
 import tempfile
+import argparse
 #configs
 TARGETS_FILE="targets.yaml"
 MAX_UPLOAD_SIZE_CONF= 30 #MB
@@ -283,16 +284,41 @@ def sig_int_handler(signal, frame):
     backup_wrapup()
 
 
+def handle_args():
+        
+            
+    parser = argparse.ArgumentParser()
+
+
+    parser.add_argument("-r","--repos_to_backup", help="backup certain repo names, seperated by ','")
+    args = parser.parse_args()
+    if args.repos_to_backup:
+        args.repos_to_backup = args.repos_to_backup.split(',')
+
+    return args
+
+
 
 if __name__ == "__main__":
     signal.signal(signal.SIGINT, sig_int_handler)
 
+    args = handle_args() 
     backup_confs = parse_config()
     logger.debug(f"loaded configs: {backup_confs}")
     for conf in backup_confs:
+
+        #if user requested specific repos to backup, check if this is one of them, skip otherwise
+        if args.repos_to_backup:
+            try:
+                if conf['name'] not in args.repos_to_backup:
+                    continue
+            except:
+                continue
+
         CURRENT_ROOT= pathlib.Path(conf['root']).resolve()
 
 
+        #used to cd back to where the script was when done backing up
         OLD_PWD=pathlib.Path().resolve()
         os.chdir(CURRENT_ROOT)
         backup_init(conf['repo'])

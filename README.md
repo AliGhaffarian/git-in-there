@@ -26,10 +26,10 @@ currently special path symbols like ~ are not supported
 ## config fields
 
 
-### targets
+### targets(optional)
 a list of relative paths for directory or file which is inside of the corresponding root
-### no_target 
-if is present the targets will be ignored and entire root directory will be backedup without prompting the user
+### no_target(optional) 
+if is present the targets will be ignored and entire root directory will be backed up without prompting the user
 
 either targets or no_target field must be provided
 
@@ -40,10 +40,13 @@ an absolute path in which targets reside
 **must be absolute path**
 ### repo
 the repo to which the files will be pushed
+### name(optional)
+used to identify the individual backup configurations when telling the script the certain ones to use by using `--repos_to_backup` argument  
 
 ### config example:
 ```yaml
 -
+	name: "vim_conf"
     repo: "https://github.com/AliGhaffarian/vim_conf"
     targets:
       - ".vim"
@@ -64,8 +67,7 @@ the repo to which the files will be pushed
     root: "/home/user/Documents/books"
     no-target: true
 ```
-
 # TODO
-- Option to backup certain repos
 - A `.ignore` file that tells the script to ignore the directory
 - Optimize grouping files for upload
+
