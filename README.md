@@ -46,7 +46,7 @@ used to identify the individual backup configurations when telling the script th
 ### config example:
 ```yaml
 -
-	name: "vim_conf"
+    name: "vim_conf"
     repo: "https://github.com/AliGhaffarian/vim_conf"
     targets:
       - ".vim"
